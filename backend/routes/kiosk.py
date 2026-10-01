@@ -140,7 +140,7 @@ async def kiosk_roster(
 ) -> List[Dict[str, Any]]:
     role = current_user.get("role")
     kiosk_site = current_user.get("site_id")
-    query: Dict[str, Any] = {"onboarded": True}
+    query: Dict[str, Any] = {"onboarded": True, "active": {"$ne": False}}
 ###    if role == "kiosk" and kiosk_site:
 ###        query["site_id"] = kiosk_site
 
@@ -272,6 +272,8 @@ async def kiosk_verify_pin(payload: KioskPinIn) -> Dict[str, bool]:
     user = await db.users.find_one({"user_id": payload.user_id})
     if not user or not user.get("pin_code_hash"):
         raise HTTPException(status_code=404, detail="Usuario o PIN no configurado")
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Usuario inactivo — contacta al administrador")
     if not verify_password(payload.pin, user["pin_code_hash"]):
         raise HTTPException(status_code=401, detail="PIN incorrecto")
     return {"ok": True}
@@ -282,6 +284,8 @@ async def kiosk_attendance_check(payload: KioskAttendanceIn) -> Dict[str, Any]:
     user = await db.users.find_one({"user_id": payload.user_id})
     if not user:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.get("active") is False:
+        raise HTTPException(status_code=403, detail="Usuario inactivo — contacta al administrador")
 
     # Auto-detect: si no se especifica type o es "auto", el sistema decide
     # basándose en la última marca del día del empleado.

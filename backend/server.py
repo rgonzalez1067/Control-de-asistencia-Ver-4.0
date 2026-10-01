@@ -558,6 +558,7 @@ class UserUpdate(BaseModel):
     schedule_id: Optional[str] = None
     picture: Optional[str] = None
     onboarded: Optional[bool] = None
+    active: Optional[bool] = None
     can_create_visits: Optional[bool] = None
     can_view_visit_logs: Optional[bool] = None
     can_manage_schedules: Optional[bool] = None

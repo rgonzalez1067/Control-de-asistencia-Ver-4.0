@@ -734,3 +734,9 @@ Backend curl: soft-delete OK con `deleted_at/deleted_by`, listado la oculta ✅.
 - **Fix (frontend TeamPage.jsx)**: se carga `GET /novelties` (ya recortado por jerarquía en backend) y se construye un índice `noveltiesByUserDay` por empleado/día. Días sin marcaje y con novedad → chip azul "Vacaciones / Reposo / Trabajo Remoto / Permiso" (aprobada = azul sólido, pendiente = azul con borde punteado + "(pend.)"). Días con marcaje + novedad → etiqueta azul pequeña bajo las horas. Se agregaron 2 entradas a la leyenda inferior.
 - Verificado con datos reales: Juan Gil (vacaciones 01–21 sep) muestra chips "Vacaciones" en todos sus días; Adalberto Salcedo muestra "Trabajo Remoto"; permisos aparecen junto a los marcajes. 80 celdas con novedad en la vista de 14 días del admin.
 
+
+## 2026-10-01 — Estatus Activo/Inactivo en ficha de Empleados
+- **Backend**: `UserUpdate.active` (server.py) + guard en `PUT /users/{id}` (admin no puede inactivarse a sí mismo; registra `deactivated_at`/`deactivated_by`, auditado). Login bloquea inactivos con 403 ("Tu usuario está inactivo…"). Kiosco: `verify-pin`, `attendance/check` y `roster` bloquean/excluyen inactivos (no marcan ni aparecen en el rostro).
+- **Frontend UsersPage**: campo **Estatus** (switch) en el formulario de crear/editar con estado ámbar "Inactivo — no puede ingresar ni marcar"; columna Estatus con badges Activo (verde)/Inactivo (gris); filtro "Todos/Activos/Inactivos"; acción de menú "Inactivar/Reactivar empleado" con diálogo de confirmación que explica que conserva el historial como paso previo a la eliminación.
+- **Verificado**: inactivar jgil → login 403, kiosk PIN 403; autodesactivación admin → 400; reactivar → login 200. UI: columna, filtro y switch visibles y funcionando (sin guardar cambios de prueba).
+

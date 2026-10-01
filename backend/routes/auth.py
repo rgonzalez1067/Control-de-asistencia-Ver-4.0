@@ -110,6 +110,14 @@ async def auth_login(request: Request, payload: LoginIn, response: Response) -> 
             await audit_log("login_failed", request, email=email)
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+    # 2b) Usuario inactivo (paso previo a eliminación) — no puede iniciar sesión
+    if user.get("active") is False:
+        await audit_log("login_inactive", request, email=email)
+        raise HTTPException(
+            status_code=403,
+            detail="Tu usuario está inactivo. Contacta al Administrador para reactivarlo.",
+        )
+
     # 3) Credenciales OK — reset counters
     await db.users.update_one(
         {"user_id": user["user_id"]},

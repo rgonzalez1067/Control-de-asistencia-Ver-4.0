@@ -328,9 +328,18 @@ async def users_update(request: Request, user_id: str, payload: UserUpdate,
     updates = payload.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="Sin cambios")
+    if updates.get("active") is False and user_id == actor.get("user_id"):
+        raise HTTPException(status_code=400, detail="No puedes desactivar tu propia cuenta")
     before = await db.users.find_one({"user_id": user_id})
     if not before:
         raise HTTPException(status_code=404, detail=ERR_USER_NOT_FOUND)
+    if updates.get("active") is False:
+        # Inactivación = paso previo a la eliminación: se registra quién y cuándo.
+        updates["deactivated_at"] = now_utc()
+        updates["deactivated_by"] = actor["user_id"]
+    elif updates.get("active") is True:
+        updates["deactivated_at"] = None
+        updates["deactivated_by"] = None
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
     u = await db.users.find_one({"user_id": user_id}, {"password_hash": 0, "pin_code_hash": 0})
     await audit_entity(request, "UPDATE", "users", user_id, before=before, after=u, actor=actor)

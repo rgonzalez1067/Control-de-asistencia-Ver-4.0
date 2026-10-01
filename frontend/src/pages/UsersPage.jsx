@@ -31,8 +31,9 @@ import {
   Search, Plus, MoreVertical, Pencil, Trash2, KeyRound, Upload,
   Download, ShieldCheck, BadgeCheck, CircleUserRound, Image as ImageIcon, UserCircle2, Camera,
   FileSpreadsheet, AlertTriangle, CheckCircle2, XCircle, ArrowRight, RefreshCw, ClipboardList,
-  ImageOff,
+  ImageOff, UserX, UserCheck,
 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import SelfieCaptureDialog from "@/components/SelfieCaptureDialog";
 import SetPinDialog from "@/components/SetPinDialog";
 
@@ -69,7 +70,7 @@ function roleBadge(v) {
 const EMPTY_USER = {
   email: "", name: "", cedula: "", role: "employee", position: "",
   department_id: "", site_id: "", supervisor_id: "", schedule_id: "",
-  password: "", pin: "",
+  password: "", pin: "", active: true,
 };
 
 export default function UsersPage() {
@@ -78,7 +79,9 @@ export default function UsersPage() {
   const [q, setQ] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [deptFilter, setDeptFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [pendingPhoto, setPendingPhoto] = useState(false);
+  const [statusTarget, setStatusTarget] = useState(null); // {user} a activar/inactivar
   const [departments, setDepartments] = useState([]);
   const [sites, setSites] = useState([]);
   const [schedules, setSchedules] = useState([]);
@@ -134,6 +137,9 @@ export default function UsersPage() {
           return false;
         }
       }
+      // Estatus: un usuario sin el campo se considera activo (data histórica).
+      if (statusFilter === "active" && u.active === false) return false;
+      if (statusFilter === "inactive" && u.active !== false) return false;
       // Empleados pendientes de foto: `has_photo` viene del backend
       // (aggregate en /users). Excluye cuentas kiosk que no capturan selfie.
       if (pendingPhoto) {
@@ -147,7 +153,7 @@ export default function UsersPage() {
         (u.cedula || "").toLowerCase().includes(needle)
       );
     }).sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }));
-  }, [users, q, roleFilter, deptFilter, pendingPhoto]);
+  }, [users, q, roleFilter, deptFilter, statusFilter, pendingPhoto]);
 
   const pendingPhotoCount = useMemo(
     () => users.filter((u) => u.role !== "kiosk" && !u.has_photo).length,
@@ -185,15 +191,30 @@ function generateSecureTempPassword() {
         ["department_id", "site_id", "supervisor_id", "schedule_id"].forEach((k) => {
           if (payload[k] === null) delete payload[k];
         });
+        delete payload.active; // todo empleado nuevo nace activo
         await api.post("/users", payload);
         toast.success("Empleado creado");
       } else {
         delete payload.password;
         delete payload.email;
+        payload.active = payload.active !== false;
         await api.put(`/users/${editing.form.user_id}`, payload);
         toast.success("Empleado actualizado");
       }
       setEditing(null);
+      loadAll();
+    } catch (e) {
+      toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
+    }
+  }
+
+  async function confirmToggleStatus() {
+    if (!statusTarget) return;
+    const next = statusTarget.active === false; // si está inactivo → activar
+    try {
+      await api.put(`/users/${statusTarget.user_id}`, { active: next });
+      toast.success(next ? "Empleado reactivado" : "Empleado inactivado");
+      setStatusTarget(null);
       loadAll();
     } catch (e) {
       toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
@@ -407,6 +428,16 @@ function generateSecureTempPassword() {
               ))}
             </SelectContent>
           </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] h-10" data-testid="users-status-filter">
+              <SelectValue placeholder="Estatus" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos los estatus</SelectItem>
+              <SelectItem value="active">Activos</SelectItem>
+              <SelectItem value="inactive">Inactivos</SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             type="button"
             variant={pendingPhoto ? "default" : "outline"}
@@ -440,15 +471,16 @@ function generateSecureTempPassword() {
                 <TableHead>Sede</TableHead>
                 <TableHead>Horario</TableHead>
                 <TableHead>Rostro</TableHead>
+                <TableHead>Estatus</TableHead>
                 <TableHead className="w-[60px] text-right">·</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody data-testid="users-table-body">
               {loading && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Cargando…</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">Cargando…</TableCell></TableRow>
               )}
               {!loading && filtered.length === 0 && (
-                <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-10">Sin resultados</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-10">Sin resultados</TableCell></TableRow>
               )}
               {!loading && filtered.map((u) => {
                 const roleMeta = roleBadge(u.role) || { label: u.role, cls: "bg-muted text-foreground" };
@@ -494,6 +526,19 @@ function generateSecureTempPassword() {
                         </span>
                       )}
                     </TableCell>
+                    <TableCell>
+                      {u.active === false ? (
+                        <Badge className="rounded-full bg-slate-200 text-slate-700 hover:bg-slate-200 text-[11px]"
+                          data-testid={`user-status-${u.user_id}`}>
+                          Inactivo
+                        </Badge>
+                      ) : (
+                        <Badge className="rounded-full bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[11px]"
+                          data-testid={`user-status-${u.user_id}`}>
+                          Activo
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -525,6 +570,14 @@ function generateSecureTempPassword() {
                             </DropdownMenuItem>
                           ) : null}
                           <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => setStatusTarget(u)}
+                            className={u.active === false ? "text-emerald-700 focus:text-emerald-800" : "text-amber-700 focus:text-amber-800"}
+                            data-testid={`user-toggle-status-${u.user_id}`}>
+                            {u.active === false
+                              ? <><UserCheck className="h-4 w-4 mr-2" /> Reactivar empleado</>
+                              : <><UserX className="h-4 w-4 mr-2" /> Inactivar empleado</>}
+                          </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(u)}>
                             <Trash2 className="h-4 w-4 mr-2" /> Eliminar
                           </DropdownMenuItem>
@@ -554,6 +607,32 @@ function generateSecureTempPassword() {
         onCancel={() => setResetTarget(null)}
         onConfirm={confirmReset}
       />
+
+      <AlertDialog open={!!statusTarget} onOpenChange={(v) => !v && setStatusTarget(null)}>
+        <AlertDialogContent data-testid="user-status-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {statusTarget?.active === false ? "Reactivar empleado" : "Inactivar empleado"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {statusTarget?.active === false ? (
+                <>Vas a <b>reactivar</b> a <b>{statusTarget?.name}</b>. Podrá volver a iniciar sesión y marcar asistencia de inmediato.</>
+              ) : (
+                <>Vas a <b>inactivar</b> a <b>{statusTarget?.name}</b>. No podrá iniciar sesión ni marcar en el kiosco, pero sus datos e historial se conservan. La inactivación es el paso previo a la eliminación definitiva de la base de datos.</>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleStatus}
+              className={statusTarget?.active === false ? "bg-emerald-600 hover:bg-emerald-600/90" : "bg-amber-600 hover:bg-amber-600/90"}
+              data-testid="user-status-confirm">
+              {statusTarget?.active === false ? "Reactivar" : "Inactivar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(v) => !v && setDeleteTarget(null)}>
         <AlertDialogContent data-testid="user-delete-dialog">
@@ -680,6 +759,26 @@ function UserFormDialog({ state, onCancel, onSave, departments, sites, schedules
           <div className="space-y-1.5">
             <Label>Cargo</Label>
             <Input {...bind("position")} placeholder="Ej. Analista de Ventas" data-testid="user-form-position" />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Estatus</Label>
+            <div className={`flex items-center justify-between rounded-xl border px-3 h-10 ${
+              form.active === false ? "border-amber-300 bg-amber-50" : "border-border/70"
+            }`} data-testid="user-form-active-wrap">
+              <span className={`text-sm ${form.active === false ? "text-amber-800 font-medium" : "text-muted-foreground"}`}>
+                {form.active === false ? "Inactivo — no puede ingresar ni marcar" : "Activo"}
+              </span>
+              <Switch
+                checked={form.active !== false}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, active: v }))}
+                data-testid="user-form-active"
+              />
+            </div>
+            {form.active === false && (
+              <p className="text-[11px] text-amber-700">
+                Inactivar conserva el historial; es el paso previo a la eliminación.
+              </p>
+            )}
           </div>
           <div className="space-y-1.5">
             <Label>Departamento</Label>

@@ -3,9 +3,11 @@
 Migrado desde server.py durante la Fase A · Iteración 4 (feb-2026).
 Cierra la Fase A: `server.py` queda por debajo de las 1000 líneas.
 """
+import asyncio
 import io
 import secrets
 
+from email_service import send_email, render_deactivation_email
 from deps import (
     api, db, get_current_user, require_roles,
     now_utc, new_id, strip_mongo_id, sanitize_user, supervisor_scope_ids,
@@ -343,7 +345,18 @@ async def users_update(request: Request, user_id: str, payload: UserUpdate,
     await db.users.update_one({"user_id": user_id}, {"$set": updates})
     u = await db.users.find_one({"user_id": user_id}, {"password_hash": 0, "pin_code_hash": 0})
     await audit_entity(request, "UPDATE", "users", user_id, before=before, after=u, actor=actor)
+    if updates.get("active") is False and before.get("active") is not False:
+        await _notify_supervisor_deactivation(u, actor)
     return strip_mongo_id(u)
+
+
+async def _notify_supervisor_deactivation(emp: Dict[str, Any], actor: Dict[str, Any]) -> None:
+    sup_id = emp.get("supervisor_id")
+    sup = await db.users.find_one({"user_id": sup_id}, {"email": 1, "name": 1, "_id": 0}) if sup_id else None
+    if not sup or not sup.get("email"):
+        return
+    mail = render_deactivation_email(sup.get("name") or "", emp.get("name") or "", actor.get("name") or "Administrador")
+    asyncio.create_task(send_email(sup["email"], f"Empleado inactivado: {emp.get('name')}", mail["text"], mail["html"]))
 
 
 @api.post("/users/{user_id}/unlock")
@@ -368,9 +381,11 @@ async def users_unlock(request: Request, user_id: str,
 async def users_delete(request: Request, user_id: str,
                        actor: Dict[str, Any] = Depends(require_roles("admin"))) -> Dict[str, bool]:
     before = await db.users.find_one({"user_id": user_id})
-    res = await db.users.delete_one({"user_id": user_id})
-    if res.deleted_count == 0:
+    if not before:
         raise HTTPException(status_code=404, detail=ERR_USER_NOT_FOUND)
+    if before.get("active") is not False:
+        raise HTTPException(status_code=400, detail="Debes inactivar al empleado antes de eliminarlo definitivamente")
+    await db.users.delete_one({"user_id": user_id})
     await audit_entity(request, "DELETE", "users", user_id, before=before, actor=actor)
     return {"ok": True}
 

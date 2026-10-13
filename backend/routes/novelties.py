@@ -7,8 +7,8 @@ from deps import (
     LEADER_ROLES, LEADER_OR_ADMIN_ROLES,
     now_utc, new_id, strip_mongo_id, supervisor_scope_ids,
     NoveltyIn, NoveltyDecideIn, NoveltyPatchIn,
-    HTTPException, Depends, Request,
-    Any, Dict, List,
+    HTTPException, Depends, Request, Query,
+    Any, Dict, List, Optional,
     audit_entity,
 )
 
@@ -32,13 +32,21 @@ def _validate_novelty_range(payload: NoveltyIn) -> None:
 
 
 @api.get("/novelties")
-async def novelties_list(user: Dict[str, Any] = Depends(get_current_user)) -> List[Dict[str, Any]]:
+async def novelties_list(user_id: Optional[str] = Query(None),
+                         user: Dict[str, Any] = Depends(get_current_user)) -> List[Dict[str, Any]]:
     # Nunca listar novedades borradas (soft-delete)
     q: Dict[str, Any] = {"status": {"$ne": "deleted"}}
     if user["role"] == "employee":
         q["user_id"] = user["user_id"]
     elif user["role"] in LEADER_ROLES:
-        q["user_id"] = {"$in": await supervisor_scope_ids(user)}
+        scope = await supervisor_scope_ids(user)
+        if user_id:
+            # El filtro por empleado nunca amplía la jerarquía de visualización.
+            q["user_id"] = user_id if user_id in scope else {"$in": []}
+        else:
+            q["user_id"] = {"$in": scope}
+    elif user_id:
+        q["user_id"] = user_id
     docs = await db.novelties.find(q).sort("created_at", -1).to_list(1000)
     return [strip_mongo_id(d) for d in docs]
 

@@ -63,7 +63,7 @@ export default function ReporteGeneralAccesosPage() {
         ]);
         setDepartments(d.data || []);
         setSites(s.data || []);
-        setAllUsers((u.data || []).filter((x) => x.role !== "kiosk"));
+        setAllUsers((u.data || []).filter((x) => x.role !== "kiosk" && x.active !== false));
       } catch (e) {
         toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
       }
@@ -387,7 +387,13 @@ export default function ReporteGeneralAccesosPage() {
               {!loading && pageRows.map((r, i) => (
                 <TableRow key={`${r.user_id}-${r.fecha}-${i}`} data-testid={`rga-row-${r.user_id}-${r.fecha}`}>
                   <TableCell className="text-xs">{r.cedula || "—"}</TableCell>
-                  <TableCell className="text-xs font-medium">{r.nombre}</TableCell>
+                  <TableCell className="text-xs font-medium">
+                    {r.nombre}
+                    {r.inactivo && (
+                      <Badge variant="outline" className="ml-2 border-amber-300 bg-amber-50 text-amber-800 text-[10px] px-1.5 py-0"
+                        data-testid={`rga-inactive-badge-${r.user_id}`}>Inactivo</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-xs">{r.departamento}</TableCell>
                   <TableCell className="text-xs">{r.cargo}</TableCell>
                   <TableCell className="text-xs tabular-nums">{fmtFecha(r.fecha)}</TableCell>

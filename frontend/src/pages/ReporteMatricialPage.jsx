@@ -71,9 +71,8 @@ export default function ReporteMatricialPage() {
     [departments],
   );
   const employeeOptions = useMemo(() => {
-    const list = filters.department_id !== "__all"
-      ? users.filter((u) => u.department_id === filters.department_id)
-      : users;
+    const list = users.filter((u) => u.active !== false
+      && (filters.department_id === "__all" || u.department_id === filters.department_id));
     return [...list].sort((a, b) => (a.name || "").localeCompare(b.name || "", "es"));
   }, [users, filters.department_id]);
 

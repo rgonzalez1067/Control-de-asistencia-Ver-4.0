@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import {
   Bell, Plus, CheckCircle2, XCircle, Clock, Calendar,
   Palmtree, Stethoscope, FileText, Sparkles, Trash2, Home, Pencil, Briefcase,
+  Users as UsersIcon, Check, X,
 } from "lucide-react";
 
 const TYPE_META = {
@@ -63,11 +64,12 @@ export default function NoveltiesPage() {
   const [selected, setSelected] = useState(new Set());
   const [decisionModal, setDecisionModal] = useState(null);
   const [decisionComment, setDecisionComment] = useState("");
+  const [empFilter, setEmpFilter] = useState("");
 
   async function load() {
     setLoading(true);
     try {
-      const calls = [api.get("/novelties")];
+      const calls = [api.get("/novelties", { params: empFilter ? { user_id: empFilter } : {} })];
       if (isManager) calls.push(api.get("/users"));
       const [nov, us] = await Promise.all(calls);
       setItems(nov.data);
@@ -75,7 +77,8 @@ export default function NoveltiesPage() {
     } catch (e) { toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message); }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); setSelected(new Set()); }, [empFilter]);
 
   const userMap = useMemo(() => Object.fromEntries(users.map((u) => [u.user_id, u])), [users]);
   // IDs del equipo del líder según jerarquía de visualización (director: toda
@@ -243,6 +246,7 @@ export default function NoveltiesPage() {
       </div>
 
       {isManager && (
+        <div className="flex items-center gap-3 flex-wrap">
         <Tabs value={tab} onValueChange={setTab}>
           <TabsList data-testid="novelties-tabs">
             <TabsTrigger value="pending" data-testid="novelties-tab-pending">
@@ -253,6 +257,13 @@ export default function NoveltiesPage() {
           </TabsList>
           <TabsContent value={tab} />
         </Tabs>
+        <EmployeeFilter
+          users={users.filter((u) => u.role !== "kiosk")}
+          me={user}
+          value={empFilter}
+          onChange={setEmpFilter}
+        />
+        </div>
       )}
 
       {isManager && pendingSelected.length > 0 && (
@@ -341,7 +352,7 @@ export default function NoveltiesPage() {
                   <SelectTrigger data-testid="novelties-form-user"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value={user?.user_id}>Yo — {user?.name}</SelectItem>
-                    {[...users.filter((u) => u.user_id !== user?.user_id)]
+                    {[...users.filter((u) => u.user_id !== user?.user_id && u.active !== false)]
                       .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }))
                       .map((u) => (
                         <SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>
@@ -679,5 +690,68 @@ function NoveltyRow({ n, user, isManager, isAdmin, isMine, canSupervisorDelete, 
         )}
       </div>
     </li>
+  );
+}
+
+function EmployeeFilter({ users, me, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState("");
+  const options = useMemo(() => {
+    const all = me && !users.some((u) => u.user_id === me.user_id) ? [me, ...users] : users;
+    const term = q.trim().toLowerCase();
+    return all
+      .filter((u) => !term || (u.name || "").toLowerCase().includes(term) || (u.cedula || "").toLowerCase().includes(term))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }));
+  }, [users, me, q]);
+  const current = value ? (users.find((u) => u.user_id === value) || (me?.user_id === value ? me : null)) : null;
+
+  return (
+    <div className="flex items-center gap-1 ml-auto">
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" className="h-10 w-72 justify-start font-normal" data-testid="novelties-employee-filter-trigger">
+            <UsersIcon className="h-4 w-4 mr-2 text-muted-foreground shrink-0" />
+            <span className={`truncate ${current ? "" : "text-muted-foreground"}`} data-testid="novelties-employee-filter-value">
+              {current ? current.name : "Todos los empleados"}
+            </span>
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-0" align="end">
+          <div className="p-2 border-b border-border/60">
+            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nombre o cédula…"
+              className="h-8 text-xs" data-testid="novelties-employee-search" autoFocus />
+          </div>
+          <div className="max-h-64 overflow-y-auto" data-testid="novelties-employee-list">
+            <EmpOption label="Todos los empleados" on={!value} onClick={() => { onChange(""); setOpen(false); }} testId="novelties-employee-all" />
+            {options.length === 0 && <p className="p-3 text-xs text-muted-foreground">Sin coincidencias</p>}
+            {options.map((u) => (
+              <EmpOption key={u.user_id} label={u.name} sub={u.cedula || "—"} inactive={u.active === false}
+                on={value === u.user_id} testId={`novelties-employee-${u.user_id}`}
+                onClick={() => { onChange(u.user_id); setOpen(false); }} />
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      {value && (
+        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => onChange("")}
+          title="Quitar filtro" data-testid="novelties-employee-clear">
+          <X className="h-4 w-4" />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+function EmpOption({ label, sub, on, inactive, onClick, testId }) {
+  return (
+    <button type="button" onClick={onClick} data-testid={testId}
+      className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-muted/60 text-left transition-colors">
+      <Check className={`h-4 w-4 shrink-0 ${on ? "text-primary" : "opacity-0"}`} />
+      <span className="flex-1 min-w-0">
+        <span className="block truncate">{label}</span>
+        {sub && <span className="block text-[10px] text-muted-foreground truncate">{sub}</span>}
+      </span>
+      {inactive && <Badge variant="outline" className="border-amber-300 bg-amber-50 text-amber-800 text-[10px] px-1.5 py-0">Inactivo</Badge>}
+    </button>
   );
 }

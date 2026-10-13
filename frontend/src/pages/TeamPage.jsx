@@ -106,11 +106,10 @@ export default function TeamPage() {
     }
   }
   const teamMembers = useMemo(() => {
-    if (isAdmin) return users.filter((u) => u.role !== "admin");
-    // El backend ya devuelve /users recortado por jerarquía de visualización
-    // (director: toda la nómina · gerente/coordinador: 2 niveles). Sólo hay
-    // que excluir al propio líder y las cuentas de servicio.
-    return users.filter((u) => u.user_id !== user?.user_id && u.role !== "kiosk");
+    const active = users.filter((u) => u.active !== false);
+    if (isAdmin) return active.filter((u) => u.role !== "admin");
+    // /users ya viene recortado por jerarquía; se excluyen el líder, kiosco e inactivos.
+    return active.filter((u) => u.user_id !== user?.user_id && u.role !== "kiosk");
   }, [users, user, isAdmin]);
   const teamIds = useMemo(() => new Set(teamMembers.map((m) => m.user_id)), [teamMembers]);
   const teamRecords = useMemo(() => records.filter((r) => teamIds.has(r.user_id)), [records, teamIds]);

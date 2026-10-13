@@ -94,3 +94,23 @@ def render_reset_email(name: str, link: str, minutes_valid: int = 30) -> Dict[st
   </td></tr>
 </table></body></html>"""
     return {"text": text, "html": html}
+
+
+def render_deactivation_email(sup_name: str, emp_name: str, actor_name: str) -> Dict[str, str]:
+    text = (
+        f"Hola {sup_name},\n\n"
+        f"Te informamos que {emp_name}, miembro de tu equipo, fue inactivado en Megasoft Asistencia por {actor_name}.\n\n"
+        "A partir de este momento no podrá iniciar sesión ni registrar marcajes en el kiosco. "
+        "Su historial de asistencia se conserva.\n\n"
+        "— Megasoft Asistencia"
+    )
+    html = f"""<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f6f7fb;padding:24px">
+<table cellpadding="0" cellspacing="0" style="max-width:520px;margin:auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0">
+  <tr><td style="padding:20px 24px;background:#0f172a;color:#fff;font-size:16px;font-weight:600">Megasoft Asistencia</td></tr>
+  <tr><td style="padding:24px">
+    <p style="margin:0 0 12px;color:#0f172a">Hola {sup_name},</p>
+    <p style="margin:0 0 12px;color:#475569"><b>{emp_name}</b>, miembro de tu equipo, fue <b style="color:#b45309">inactivado</b> por {actor_name}.</p>
+    <p style="margin:0 0 8px;color:#64748b;font-size:13px">No podrá iniciar sesión ni marcar en el kiosco. Su historial de asistencia se conserva.</p>
+  </td></tr>
+</table></body></html>"""
+    return {"text": text, "html": html}

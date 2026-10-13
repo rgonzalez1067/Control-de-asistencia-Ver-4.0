@@ -54,7 +54,7 @@ async def build_general_access_report(db, from_date: str, to_date: str,
             uq["user_id"] = {"$in": user_ids}
     users = await db.users.find(uq, {
         "user_id": 1, "cedula": 1, "name": 1, "first_name": 1, "last_name": 1,
-        "department_id": 1, "position": 1, "_id": 0,
+        "department_id": 1, "position": 1, "active": 1, "_id": 0,
     }).sort("name", 1).to_list(10000)
     uids = [u["user_id"] for u in users]
 
@@ -92,6 +92,7 @@ async def build_general_access_report(db, from_date: str, to_date: str,
                 "user_id": uid,
                 "cedula": u.get("cedula") or "",
                 "nombre": nombre,
+                "inactivo": u.get("active") is False,
                 "departamento": depts.get(u.get("department_id") or "", "—"),
                 "cargo": u.get("position") or "—",
                 "fecha": day,
@@ -204,7 +205,7 @@ def export_general_access_pdf(report: Dict[str, Any], company_name: str = "Mega 
     for r in report["rows"]:
         data.append([
             Paragraph(str(r["cedula"]), p_cell),
-            Paragraph(str(r["nombre"]), p_cell),
+            Paragraph(str(r["nombre"]) + (' <font color="#B45309"><b>(Inactivo)</b></font>' if r.get("inactivo") else ""), p_cell),
             Paragraph(str(r["departamento"]), p_cell),
             Paragraph(str(r["cargo"]), p_cell),
             Paragraph(r["fecha"], p_cell),

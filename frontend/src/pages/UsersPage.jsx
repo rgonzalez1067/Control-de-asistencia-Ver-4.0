@@ -578,8 +578,13 @@ function generateSecureTempPassword() {
                               ? <><UserCheck className="h-4 w-4 mr-2" /> Reactivar empleado</>
                               : <><UserX className="h-4 w-4 mr-2" /> Inactivar empleado</>}
                           </DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteTarget(u)}>
-                            <Trash2 className="h-4 w-4 mr-2" /> Eliminar
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            disabled={u.active !== false}
+                            onClick={() => setDeleteTarget(u)}
+                            data-testid={`user-delete-${u.user_id}`}>
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            {u.active !== false ? "Eliminar (inactiva primero)" : "Eliminar"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

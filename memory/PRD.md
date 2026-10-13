@@ -740,3 +740,11 @@ Backend curl: soft-delete OK con `deleted_at/deleted_by`, listado la oculta ✅.
 - **Frontend UsersPage**: campo **Estatus** (switch) en el formulario de crear/editar con estado ámbar "Inactivo — no puede ingresar ni marcar"; columna Estatus con badges Activo (verde)/Inactivo (gris); filtro "Todos/Activos/Inactivos"; acción de menú "Inactivar/Reactivar empleado" con diálogo de confirmación que explica que conserva el historial como paso previo a la eliminación.
 - **Verificado**: inactivar jgil → login 403, kiosk PIN 403; autodesactivación admin → 400; reactivar → login 200. UI: columna, filtro y switch visibles y funcionando (sin guardar cambios de prueba).
 
+
+## 2026-10-13 — Ciclo de vida de empleados inactivos + filtro en Novedades
+- **Excluir inactivos**: ocultos en selectores de empleados de Reporte de Asistencias, Matriz, Turnos Especiales, Visitas (anfitrión), Reporte General de Accesos, formulario de Nueva novedad y en la lista de Mi Equipo. El historial se conserva.
+- **Eliminación segura**: `DELETE /users/{id}` responde 400 si el empleado no está inactivo; en la UI el ítem "Eliminar" queda deshabilitado ("inactiva primero").
+- **Reporte de bajas**: Reporte General de Accesos devuelve `inactivo` por fila; badge ámbar "Inactivo" en la vista y "(Inactivo)" en el PDF.
+- **Aviso al supervisor**: al inactivar un empleado se envía correo (SMTP, en segundo plano) a su supervisor directo (`render_deactivation_email`).
+- **Filtro por empleado en Novedades**: combobox con búsqueda por nombre/cédula (líderes/admin). `GET /novelties?user_id=` respeta la jerarquía (fuera de scope → vacío).
+- Verificado con curl (400/200 en delete, email enviado, filtro 9/9 novedades, PDF con marca) y screenshots.

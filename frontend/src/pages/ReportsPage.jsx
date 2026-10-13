@@ -96,9 +96,8 @@ export default function ReportsPage() {
   const siteMap = useMemo(() => Object.fromEntries(sites.map((s) => [s.site_id, s.name])), [sites]);
 
   const employeeOptions = useMemo(() => {
-    const list = filters.department_id !== "__all"
-      ? users.filter((u) => u.department_id === filters.department_id)
-      : users;
+    const list = users.filter((u) => u.active !== false
+      && (filters.department_id === "__all" || u.department_id === filters.department_id));
     return [...list].sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" }));
   }, [users, filters.department_id]);
 

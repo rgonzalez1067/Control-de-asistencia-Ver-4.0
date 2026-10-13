@@ -46,7 +46,7 @@ export default function ReporteHorasTurnosEspecialesPage() {
       try {
         const [u, d] = await Promise.all([api.get("/users"), api.get("/departments")]);
         // Solo empleados sin horario fijo (Horario Especial)
-        const specials = (u.data || []).filter((usr) => !usr.schedule_id);
+        const specials = (u.data || []).filter((usr) => !usr.schedule_id && usr.active !== false);
         setUsers(specials.sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" })));
         setDepartments(d.data);
       } catch (e) {

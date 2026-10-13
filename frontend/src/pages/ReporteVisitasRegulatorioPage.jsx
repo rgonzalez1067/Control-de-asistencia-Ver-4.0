@@ -57,7 +57,7 @@ export default function ReporteVisitasRegulatorioPage() {
       try {
         const [s, u] = await Promise.all([api.get("/sites"), api.get("/users")]);
         setSites(s.data);
-        setUsers([...u.data].sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" })));
+        setUsers(u.data.filter((x) => x.active !== false).sort((a, b) => (a.name || "").localeCompare(b.name || "", "es", { sensitivity: "base" })));
       } catch (e) {
         toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
       }

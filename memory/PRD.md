@@ -752,3 +752,4 @@ Backend curl: soft-delete OK con `deleted_at/deleted_by`, listado la oculta ✅.
 ## 2026-10-21 — Respaldo/Restore total
 - EXPORTABLE_COLLECTIONS ahora incluye TODAS: + holidays, audit_log, kiosk_sessions, otp_challenges, password_reset_tokens, user_sessions.
 - Restore: fechas ISO con hora se revierten a datetime (recursivo; 'YYYY-MM-DD' queda texto); `_id` original preservado (upsert idempotente aunque no haya clave natural); `settings` siempre con `_id="company"` (antes se perdía y la app usaba valores por defecto).
+- Backlog (pausado por el usuario 2026-10-21): "Depuración de Base de Datos" en Ajustes + permiso en perfiles de acceso (borrado filtrado). No iniciado.

@@ -223,7 +223,7 @@ export default function AppLayout() {
         </div>
       )}
       {/* Sidebar (desktop) */}
-      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-primary text-primary-foreground">
+      <aside className="hidden lg:flex w-64 shrink-0 flex-col bg-primary text-primary-foreground sticky top-0 h-screen self-start">
         <div className="px-6 py-6 flex items-center gap-3 border-b border-white/10">
           {logo ? (
             <div className="bg-white/95 rounded-lg px-2 py-1.5 shadow-sm">
@@ -246,7 +246,7 @@ export default function AppLayout() {
             </>
           )}
         </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto" data-testid="sidebar-nav">
+        <nav className="flex-1 min-h-0 px-3 py-4 space-y-0.5 overflow-y-auto overscroll-contain" data-testid="sidebar-nav">
           {renderNavWithSections(items)}
         </nav>
         <div className="p-4 border-t border-white/10 text-[11px] text-white/50">
@@ -294,7 +294,7 @@ export default function AppLayout() {
                       Menú de navegación de la aplicación
                     </SheetDescription>
                   </SheetHeader>
-                  <nav className="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto" data-testid="mobile-nav">
+                  <nav className="flex-1 min-h-0 px-3 py-3 space-y-0.5 overflow-y-auto overscroll-contain" data-testid="mobile-nav">
                     {renderNavWithSections(items, () => setDrawerOpen(false))}
                   </nav>
                   <div className="px-5 py-4 border-t border-white/10 text-[11px] text-white/50">

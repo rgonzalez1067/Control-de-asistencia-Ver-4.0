@@ -181,6 +181,10 @@ async def reports_list(from_date: Optional[str] = Query(None),
     return [strip_mongo_id(d) for d in docs]
 
 
+_SEVERITY_ES = {"on_time": "A tiempo", "late_minor": "Tardanza leve", "late_major": "Tardanza grave"}
+_JUST_STATUS_ES = {"none": "Sin justificación", "pending": "Pendiente", "approved": "Aprobada", "rejected": "Rechazada"}
+
+
 @api.get("/reports/export")
 async def reports_export(from_date: Optional[str] = Query(None),
                          to_date: Optional[str] = Query(None),
@@ -215,29 +219,26 @@ async def reports_export(from_date: Optional[str] = Query(None),
         allowed = dept_ids if allowed is None else allowed & dept_ids
     if allowed is not None:
         q["user_id"] = {"$in": list(allowed)}
-    users = {u["user_id"]: u async for u in db.users.find({}, {"user_id": 1, "name": 1, "email": 1, "cedula": 1})}
+    users = {u["user_id"]: u async for u in db.users.find({}, {"user_id": 1, "name": 1, "cedula": 1})}
+    yes_no = lambda v: "Sí" if v else "No"  # noqa: E731
     buf = io.StringIO()
+    buf.write("\ufeff")  # BOM: Excel abre correctamente tildes y eñes
     w = csv.writer(buf)
-    w.writerow(["record_id", "user_id", "name", "cedula", "type", "timestamp_utc",
-                "timestamp_local", "site_id", "within_geofence", "is_late", "late_minutes",
-                "late_severity", "requires_justification", "justification",
-                "justification_status", "rejection_reason"])
+    w.writerow(["Nombre", "Cédula", "Tipo", "Fecha y hora", "Tardanza", "Minutos de tardanza",
+                "Severidad", "Requiere justificación", "Justificación",
+                "Estado de justificación", "Motivo de rechazo"])
     async for r in db.attendance.find(q).sort("timestamp", -1):
         u = users.get(r.get("user_id"), {})
         ts = r.get("timestamp")
-        if isinstance(ts, datetime):
-            ts_local = ts.astimezone(APP_TZ).strftime("%Y-%m-%d %H:%M:%S")
-            ts_utc = ts.astimezone(timezone.utc).isoformat()
-        else:
-            ts_local = str(ts)
-            ts_utc = str(ts)
-        w.writerow([r.get("record_id"), r.get("user_id"), u.get("name"), u.get("cedula"),
-                    r.get("type"), ts_utc, ts_local, r.get("site_id"),
-                    r.get("within_geofence"), r.get("is_late"), r.get("late_minutes"),
-                    r.get("late_severity") or "", r.get("requires_justification") or False,
+        ts_local = ts.astimezone(APP_TZ).strftime("%d/%m/%Y %H:%M:%S") if isinstance(ts, datetime) else str(ts or "")
+        w.writerow([u.get("name") or "", u.get("cedula") or "",
+                    "Entrada" if r.get("type") == "in" else "Salida", ts_local,
+                    yes_no(r.get("is_late")), r.get("late_minutes") or 0,
+                    _SEVERITY_ES.get(r.get("late_severity") or "", ""),
+                    yes_no(r.get("requires_justification")),
                     r.get("justification") or "",
-                    r.get("justification_status") or "none",
+                    _JUST_STATUS_ES.get(r.get("justification_status") or "none", r.get("justification_status")),
                     r.get("rejection_reason") or ""])
     buf.seek(0)
-    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
+    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv; charset=utf-8",
                              headers={"Content-Disposition": "attachment; filename=asistencia_report.csv"})

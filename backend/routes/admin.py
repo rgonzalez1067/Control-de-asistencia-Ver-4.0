@@ -39,6 +39,7 @@ EXPORTABLE_COLLECTIONS = [
     "novelties", "visits", "settings",
     "access_profiles", "attendance",
     "schedule_assignments", "assignment_plans",
+    "holidays",
 ]
 
 
@@ -300,6 +301,7 @@ async def admin_import(request: Request,
         "visits": "visit_id", "settings": "_id",
         "access_profiles": "profile_id", "attendance": "record_id",
         "schedule_assignments": "assignment_id", "assignment_plans": "plan_id",
+        "holidays": "holiday_id",
     }
     summary: Dict[str, Any] = {"restored": {}, "skipped": {}, "mode": mode}
     for name, docs in (payload.get("collections") or {}).items():

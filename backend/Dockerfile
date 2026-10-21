@@ -26,8 +26,9 @@ RUN pip install --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt \
     && python -c "import uvicorn, fastapi; print('deps OK', uvicorn.__version__)"
 
-# Copia explícita del código fuente y módulos
-COPY server.py deps.py matrix_report.py ./
+# Copia todos los módulos Python del backend (server, deps, reportes,
+# email_service, security_config, …) y el paquete de rutas.
+COPY *.py ./
 COPY routes/ ./routes/
 
 # Ejecutar como usuario no-root

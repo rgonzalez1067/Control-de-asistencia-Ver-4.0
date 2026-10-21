@@ -134,3 +134,7 @@ code {
       radial-gradient(circle at 80% 85%, rgba(23,62,107,0.35) 0px, transparent 45%),
       linear-gradient(180deg, hsl(216 40% 7%) 0%, hsl(216 45% 5%) 100%);
 }
+
+/* Scroll con rueda/táctil sin barra visible (menú lateral) */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

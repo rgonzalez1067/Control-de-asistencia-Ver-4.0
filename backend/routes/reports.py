@@ -184,15 +184,37 @@ async def reports_list(from_date: Optional[str] = Query(None),
 @api.get("/reports/export")
 async def reports_export(from_date: Optional[str] = Query(None),
                          to_date: Optional[str] = Query(None),
+                         user_id: Optional[str] = Query(None),
+                         site_id: Optional[str] = Query(None),
+                         department_id: Optional[str] = Query(None),
+                         type: Optional[str] = Query(None),
+                         status: Optional[str] = Query(None),
                          user: Dict[str, Any] = Depends(get_current_user)) -> StreamingResponse:
     q: Dict[str, Any] = {}
     rng = _parse_date_range(from_date, to_date)
     if rng:
         q["timestamp"] = rng
+    if site_id:
+        q["site_id"] = site_id
+    if type in ("in", "out"):
+        q["type"] = type
+    if status == "late":
+        q["is_late"] = True
+    elif status == "ontime":
+        q["type"] = "in"
+        q["is_late"] = {"$ne": True}
+    allowed: Optional[set] = None
     if user["role"] == "employee":
-        q["user_id"] = user["user_id"]
+        allowed = {user["user_id"]}
     elif user["role"] in LEADER_ROLES:
-        q["user_id"] = {"$in": await supervisor_scope_ids(user)}
+        allowed = set(await supervisor_scope_ids(user))
+    if user_id:
+        allowed = {user_id} if allowed is None or user_id in allowed else set()
+    if department_id:
+        dept_ids = {u["user_id"] async for u in db.users.find({"department_id": department_id}, {"user_id": 1})}
+        allowed = dept_ids if allowed is None else allowed & dept_ids
+    if allowed is not None:
+        q["user_id"] = {"$in": list(allowed)}
     users = {u["user_id"]: u async for u in db.users.find({}, {"user_id": 1, "name": 1, "email": 1, "cedula": 1})}
     buf = io.StringIO()
     w = csv.writer(buf)

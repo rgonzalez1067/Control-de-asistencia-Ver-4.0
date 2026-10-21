@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api, API, getToken, formatApiErrorDetail } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -62,15 +62,24 @@ export default function ReportsPage() {
     loadRefs();
   }, []);
 
+  // Filtros de servidor vigentes en la consulta mostrada (el CSV debe coincidir con la tabla).
+  const appliedRef = useRef(null);
+
+  function serverParams(f) {
+    const params = new URLSearchParams();
+    if (f.from_date) params.set("from_date", f.from_date);
+    if (f.to_date) params.set("to_date", f.to_date);
+    if (f.user_id !== "__all") params.set("user_id", f.user_id);
+    if (f.site_id !== "__all") params.set("site_id", f.site_id);
+    return params;
+  }
+
   async function fetchReports() {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (filters.from_date) params.set("from_date", filters.from_date);
-      if (filters.to_date) params.set("to_date", filters.to_date);
-      if (filters.user_id !== "__all") params.set("user_id", filters.user_id);
-      if (filters.site_id !== "__all") params.set("site_id", filters.site_id);
-      const { data } = await api.get(`/reports?${params.toString()}`);
+      const snapshot = { ...filters };
+      const { data } = await api.get(`/reports?${serverParams(snapshot).toString()}`);
+      appliedRef.current = snapshot;
       setRecords(data);
     } catch (e) {
       toast.error(formatApiErrorDetail(e.response?.data?.detail) || e.message);
@@ -115,9 +124,11 @@ export default function ReportsPage() {
   }, [filtered]);
 
   function downloadCsv() {
-    const params = new URLSearchParams();
-    if (filters.from_date) params.set("from_date", filters.from_date);
-    if (filters.to_date) params.set("to_date", filters.to_date);
+    const applied = appliedRef.current || filters;
+    const params = serverParams(applied);
+    if (filters.department_id !== "__all") params.set("department_id", filters.department_id);
+    if (filters.type !== "all") params.set("type", filters.type);
+    if (filters.status !== "all") params.set("status", filters.status);
     fetch(`${API}/reports/export?${params.toString()}`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     })
@@ -125,7 +136,7 @@ export default function ReportsPage() {
       .then((blob) => {
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `asistencia_${filters.from_date}_a_${filters.to_date}.csv`;
+        a.download = `asistencia_${applied.from_date}_a_${applied.to_date}.csv`;
         a.click();
         toast.success("Reporte descargado");
       })

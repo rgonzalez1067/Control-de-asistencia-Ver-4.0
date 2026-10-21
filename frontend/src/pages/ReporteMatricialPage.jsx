@@ -141,7 +141,7 @@ export default function ReporteMatricialPage() {
   }, [data.rows]);
 
   return (
-    <div className="space-y-6" data-testid="matrix-report-page">
+    <div className="p-4 sm:p-8 space-y-6" data-testid="matrix-report-page">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="flex items-center gap-2">

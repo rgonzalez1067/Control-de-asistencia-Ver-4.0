@@ -159,7 +159,7 @@ export default function SecurityProfilesPage() {
   const activeCount = Object.values(permissions).filter(Boolean).length;
 
   return (
-    <div className="space-y-6" data-testid="security-profiles-page">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6" data-testid="security-profiles-page">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Seguridad</p>

@@ -76,7 +76,7 @@ export default function HolidaysPage() {
   });
 
   return (
-    <div className="space-y-6" data-testid="holidays-page">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6" data-testid="holidays-page">
       <div className="flex items-center justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Configuración</p>

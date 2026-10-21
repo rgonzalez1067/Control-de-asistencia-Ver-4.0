@@ -54,7 +54,7 @@ export default function UserPermissionsPage() {
   useEffect(() => { loadAll(); }, []);
 
   return (
-    <div className="space-y-6" data-testid="user-permissions-page">
+    <div className="p-4 sm:p-8 max-w-7xl mx-auto space-y-6" data-testid="user-permissions-page">
       <header>
         <p className="text-xs uppercase tracking-[0.24em] text-muted-foreground">Seguridad</p>
         <h1 className="text-3xl font-bold flex items-center gap-2 mt-1">

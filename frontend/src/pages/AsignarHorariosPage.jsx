@@ -37,10 +37,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 
 const NOVELTY_OPTIONS = [
-  { value: "remote",     label: "Trabajo Remoto",   icon: Home,        color: "bg-emerald-100 text-emerald-800 border-emerald-300" },
-  { value: "vacation",   label: "Vacaciones",        icon: Palmtree,    color: "bg-sky-100 text-sky-800 border-sky-300" },
-  { value: "leave",      label: "Reposo",            icon: HeartPulse,  color: "bg-rose-100 text-rose-800 border-rose-300" },
-  { value: "permission", label: "Permiso",           icon: TicketCheck, color: "bg-amber-100 text-amber-800 border-amber-300" },
+  { value: "remote",     label: "Trabajo Remoto",   icon: Home,        color: "bg-yellow-400 text-black border-yellow-500" },
+  { value: "vacation",   label: "Vacaciones",        icon: Palmtree,    color: "bg-gray-700 text-white border-gray-800" },
+  { value: "leave",      label: "Reposo",            icon: HeartPulse,  color: "bg-green-800 text-white border-green-900" },
+  { value: "permission", label: "Permiso",           icon: TicketCheck, color: "bg-blue-900 text-white border-blue-950" },
 ];
 const NOVELTY_MAP = Object.fromEntries(NOVELTY_OPTIONS.map((n) => [n.value, n]));
 

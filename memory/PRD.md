@@ -748,3 +748,7 @@ Backend curl: soft-delete OK con `deleted_at/deleted_by`, listado la oculta ✅.
 - **Aviso al supervisor**: al inactivar un empleado se envía correo (SMTP, en segundo plano) a su supervisor directo (`render_deactivation_email`).
 - **Filtro por empleado en Novedades**: combobox con búsqueda por nombre/cédula (líderes/admin). `GET /novelties?user_id=` respeta la jerarquía (fuera de scope → vacío).
 - Verificado con curl (400/200 en delete, email enviado, filtro 9/9 novedades, PDF con marca) y screenshots.
+
+## 2026-10-21 — Respaldo/Restore total
+- EXPORTABLE_COLLECTIONS ahora incluye TODAS: + holidays, audit_log, kiosk_sessions, otp_challenges, password_reset_tokens, user_sessions.
+- Restore: fechas ISO con hora se revierten a datetime (recursivo; 'YYYY-MM-DD' queda texto); `_id` original preservado (upsert idempotente aunque no haya clave natural); `settings` siempre con `_id="company"` (antes se perdía y la app usaba valores por defecto).

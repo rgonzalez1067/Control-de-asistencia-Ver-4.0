@@ -8,6 +8,7 @@ producción sin editar `.env` (evita rotar el token en un dashboard).
 """
 import json
 import os
+import re
 import secrets
 from bson import ObjectId
 
@@ -39,7 +40,8 @@ EXPORTABLE_COLLECTIONS = [
     "novelties", "visits", "settings",
     "access_profiles", "attendance",
     "schedule_assignments", "assignment_plans",
-    "holidays",
+    "holidays", "audit_log", "kiosk_sessions",
+    "otp_challenges", "password_reset_tokens", "user_sessions",
 ]
 
 
@@ -238,19 +240,37 @@ async def admin_export(request: Request, payload: Dict[str, Any],
     )
 
 
+_ISO_DT = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}")
+
+
+def _revive(v: Any) -> Any:
+    """Revierte lo que hizo `_serialize_doc`: ISO con hora → datetime (las fechas 'YYYY-MM-DD' quedan como texto)."""
+    if isinstance(v, str) and _ISO_DT.match(v):
+        try:
+            return datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            return v
+    if isinstance(v, dict):
+        return {k: _revive(x) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_revive(x) for x in v]
+    return v
+
+
+def _revive_id(v: Any) -> Any:
+    return ObjectId(v) if isinstance(v, str) and len(v) == 24 and ObjectId.is_valid(v) else v
+
+
 async def _restore_collection_docs(name: str, docs: list, mode: str, nat_key: Optional[str]) -> int:
     cleaned = []
     for d in docs:
         if not isinstance(d, dict):
             continue
-        doc = dict(d)
-        doc.pop("_id", None)
-        for tk in ("created_at", "updated_at", "decided_at", "exit_at", "timestamp"):
-            if tk in doc and isinstance(doc[tk], str):
-                try:
-                    doc[tk] = datetime.fromisoformat(doc[tk].replace("Z", "+00:00"))
-                except Exception:
-                    pass
+        doc = {k: _revive(v) for k, v in d.items() if k != "_id"}
+        if d.get("_id") is not None:
+            doc["_id"] = _revive_id(d["_id"])
+        if name == "settings":
+            doc["_id"] = "company"  # documento único que la app lee por este _id
         cleaned.append(doc)
 
     if not cleaned:
@@ -262,20 +282,16 @@ async def _restore_collection_docs(name: str, docs: list, mode: str, nat_key: Op
         await col.insert_many(cleaned)
         return len(cleaned)
 
-    restored = 0
-    if nat_key:
-        for doc in cleaned:
-            val = doc.get(nat_key)
-            if val:
-                await col.update_one({nat_key: val}, {"$set": doc}, upsert=True)
-                restored += 1
-            else:
-                await col.insert_one(doc)
-                restored += 1
-    else:
-        await col.insert_many(cleaned)
-        restored = len(cleaned)
-    return restored
+    for doc in cleaned:
+        if nat_key and nat_key != "_id" and doc.get(nat_key):
+            # Se empareja por clave natural; el _id del destino se conserva.
+            doc.pop("_id", None)
+            await col.update_one({nat_key: doc[nat_key]}, {"$set": doc}, upsert=True)
+        elif doc.get("_id") is not None:
+            await col.replace_one({"_id": doc["_id"]}, doc, upsert=True)
+        else:
+            await col.insert_one(doc)
+    return len(cleaned)
 
 
 @api.post("/admin/import", include_in_schema=False)
@@ -301,7 +317,9 @@ async def admin_import(request: Request,
         "visits": "visit_id", "settings": "_id",
         "access_profiles": "profile_id", "attendance": "record_id",
         "schedule_assignments": "assignment_id", "assignment_plans": "plan_id",
-        "holidays": "holiday_id",
+        "holidays": "holiday_id", "audit_log": "log_id",
+        "kiosk_sessions": "session_id", "otp_challenges": "challenge_id",
+        "password_reset_tokens": "token", "user_sessions": "session_token",
     }
     summary: Dict[str, Any] = {"restored": {}, "skipped": {}, "mode": mode}
     for name, docs in (payload.get("collections") or {}).items():

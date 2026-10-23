@@ -33,7 +33,7 @@ export default function ReporteMatricialPage() {
     user_id: "__all",
     site_id: "__all",
     schedule_id: "",
-    sort_by: "name",
+    sort_by: "entry_asc",
   });
   const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
@@ -211,7 +211,7 @@ export default function ReporteMatricialPage() {
               <Select value={filters.sort_by} onValueChange={(v) => setFilters((f) => ({ ...f, sort_by: v }))}>
                 <SelectTrigger data-testid="matrix-sort-by" className="truncate"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="name" data-testid="matrix-sort-name">Por defecto (alfabético)</SelectItem>
+                  <SelectItem value="name" data-testid="matrix-sort-name">Alfabético</SelectItem>
                   <SelectItem value="entry_asc" data-testid="matrix-sort-asc">Ascendente por entrada (más temprano primero)</SelectItem>
                   <SelectItem value="entry_desc" data-testid="matrix-sort-desc">Descendente por entrada (más tardío primero)</SelectItem>
                 </SelectContent>
